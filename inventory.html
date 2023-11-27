@@ -177,8 +177,8 @@
                     departmentSnapshot.forEach((childSnapshot) => {
                         const userData = childSnapshot.val();
                         const userId = childSnapshot.key;
-
-                        const row = document.createElement('tr');
+                        //para to sa retrieving ng data from firebase and output sa table
+                        const row = document.createElement('tr'); //yung mga variable na may $ na sign is pangcall ng declared Variable
                         row.innerHTML = `
                             <td>${userData.username}</td>
                             <td>${userData.originalPassword}</td>
@@ -194,7 +194,7 @@
                 });
             });
         }
-        const searchColumns = ['username'];
+        const searchColumns = ['username'];// since username ang need na isearch, username lang ang nilagay ko dito
 
         function searchUser() {
             const input = document.getElementById('searchInput').value.toLowerCase();
