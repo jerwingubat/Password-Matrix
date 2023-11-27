@@ -132,7 +132,7 @@
             appId: "1:14862856385:web:9676b51d1534a78e796440",
             measurementId: "G-K5MF2K4DYB"
         };
-
+        //yung firebase config na set is from firebase, ginagamit to para magkaroon ng connecttion ang system and ang database
 
 
 
@@ -171,7 +171,7 @@
                 showAlert("Username already exists. Please choose a different username.", true);
             } else {
                 const usersRef = ref(db, `users/${department}/${username}`);
-
+                //"set" function is function ni firebase for savinf ng data sa database
                 set(usersRef, {
                     username: username,
                     originalPassword: password,
