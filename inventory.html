@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Table</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            /*background: linear-gradient(to bottom, #BFB29E, #D6C7AE);*/
+            background-color: #ECE3CE;
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            border: 1px solid #0031ad;
+            padding-left: 30px;
+            padding-right: 30px;
+            padding-top: 30px;
+            padding-bottom: 30px;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        .bgimage {
+            width: 100%;
+            height: 100vh;
+            background-size: cover;
+            background-image: url('indexbg.jpg');
+            background-repeat: no-repeat;
+            background-position: top;
+            background-attachment: fixed;
+            filter: blur(10px);
+        }
+
+        .registered-accounts {
+            text-align: center;
+            margin: 0 auto;
+            width: 80%;
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-top: 40px;
+        }
+
+        .table-container {
+            overflow: auto;
+            max-height: 75vh;
+            margin-top: 20px;
+        }
+
+        .search-container {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        label {
+            font-size: 1.2em;
+            margin-right: 10px;
+        }
+
+        #searchInput {
+            padding: 8px;
+            font-size: 1em;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 200px;
+            transition: width 0.3s ease-in-out;
+        }
+
+        #searchInput:focus {
+            width: 250px;
+            outline: auto;
+        }
+        #departmentFilter {
+            padding: 8px;
+            font-size: 1em;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            transition: border-color 0.3s ease-in-out;
+        }
+
+        #departmentFilter:focus {
+            border-color: #0031ad;
+            outline: none;
+        }
+        #redirectButton {
+            padding: 10px;
+            font-size: 1em;
+            background-color: #0031ad;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        #redirectButton:hover {
+            background-color: #001f7e;
+        }
+        button {
+            padding: 8px;
+            font-size: 0.8em;
+            background-color: #ff5858;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #ff0000;
+        }
+
+    </style>
+    <script type="module" defer>
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-analytics.js";
+        import { getDatabase, ref, onValue, push, get, set, remove } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCUtv-5gDZPkLI2cpnlbhlU2iHVaN5Mwm8",
+            authDomain: "newpasswordmatrix.firebaseapp.com",
+            projectId: "newpasswordmatrix",
+            storageBucket: "newpasswordmatrix.appspot.com",
+            messagingSenderId: "14862856385",
+            appId: "1:14862856385:web:9676b51d1534a78e796440",
+            measurementId: "G-K5MF2K4DYB"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        function filterByDepartment() {
+            const departmentFilter = document.getElementById('departmentFilter').value;
+            const userTableBody = document.getElementById('userTableBody');
+            const rows = userTableBody.getElementsByTagName('tr');
+
+            for (let i = 0; i < rows.length; i++) {
+                const cellText = rows[i].getElementsByTagName('td')[3].textContent;//department is in 4th column of the table. (This will serve as key)
+
+                rows[i].style.display = departmentFilter === '' || departmentFilter === cellText ? '' : 'none';
+            }
+        }
+
+        function displayUserData() {
+            const userTableBody = document.getElementById('userTableBody');
+            const usersRef = ref(db, 'users');
+
+            onValue(usersRef, (snapshot) => {
+                userTableBody.innerHTML = '';
+                snapshot.forEach((departmentSnapshot) => {
+                    const department = departmentSnapshot.key;
+
+                    departmentSnapshot.forEach((childSnapshot) => {
+                        const userData = childSnapshot.val();
+                        const userId = childSnapshot.key;
+
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${userData.username}</td>
+                            <td>${userData.originalPassword}</td>
+                            <td>${userData.encryptedPassword}</td>
+                            <td>${department}</td>
+                        `;
+                        const deleteButtonCell = document.createElement('td');
+                        deleteButtonCell.appendChild(createDeleteButton(userId, department, userData.username));
+                        row.appendChild(deleteButtonCell);
+
+                        userTableBody.appendChild(row);
+                    });
+                });
+            });
+        }
+        const searchColumns = ['username'];
+
+        function searchUser() {
+            const input = document.getElementById('searchInput').value.toLowerCase();
+            const userTableBody = document.getElementById('userTableBody');
+            const rows = userTableBody.getElementsByTagName('tr');
+
+            for (let i = 0; i < rows.length; i++) {
+                let found = false;
+
+                for (const column of searchColumns) {
+                    const cellText = rows[i].getElementsByTagName('td')[searchColumns.indexOf(column)].textContent.toLowerCase();
+
+                    if (cellText.includes(input)) {
+                        found = true;
+                        break;
+                    }
+                }
+
+                rows[i].style.display = found ? '' : 'none';
+            }
+        }
+        function deleteUserData(userId, department, username) {
+            const userRef = ref(db, `users/${department}/${userId}`);
+            remove(userRef);
+        }
+        function createDeleteButton(userId, department, username) {
+            const button = document.createElement('button');
+            button.textContent = 'Delete';
+            button.addEventListener('click', () => {
+                if (confirm(`Are you sure you want to delete ${username} from ${department}?`)) {
+                    deleteUserData(userId, department, username);
+                }
+            });
+            return button;
+        }
+        const departmentFilter = document.getElementById('departmentFilter');
+        departmentFilter.addEventListener('change', filterByDepartment);
+        document.getElementById('searchInput').addEventListener('input', searchUser);
+
+        window.addEventListener('load', () => {
+            displayUserData();
+            filterByDepartment();
+        });
+    </script>
+</head>
+
+<body>
+    <div class="registered-accounts">
+        <button id="redirectButton" onclick="window.location.href = 'index.html';">Go to Index</button>
+        <h1>USER DATA</h1>
+        <div class="search-container">
+            <label for="departmentFilter">Filter by Department:</label>
+            <select id="departmentFilter" onchange="filterByDepartment()">
+                <option value="">All Departments</option>
+                <option value="DCS">DCS</option>
+                <option value="DTE">DTE</option>
+                <option value="DMS">DMS</option>
+                <option value="DAS">DAS</option>
+                <option value="DIT">DIT</option>
+            </select>
+            <label for="searchInput">Search:</label>
+            <input type="text" id="searchInput" class="search-input">
+        </div>
+        <div class="table-container">
+            <table id="userTable">
+                <thead>
+                    <div class="table-container"></div>
+                    <tr>
+                        <th>Username</th>
+                        <th>Original Password</th>
+                        <th>Encrypted Password</th>
+                        <th>Department</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                    <!--Auto update from firebase-->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+</body>
+
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+
+    <title>Login</title>
+</head>
+
+<body>
+    <style>
+        .bgimage {
+            width: 100%;
+            height: 100vh;
+            background-size: cover;
+            background-image: url('indexbg.jpg');
+            background-repeat: no-repeat;
+            background-position: top;
+            background-attachment: fixed;
+            filter: blur(10px);
+        }
+
+        #alertMessage {
+            display: none;
+            background-color: #f44336;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        #loginbutton {
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 12px 24px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        #loginbutton:hover {
+            background-color: #45a049;
+
+        }
+
+        #inventoryButton {
+            background-color: #0a6d86;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 12px 24px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        #inventoryButton:hover {
+            background-color: #45a049;
+        }
+
+        .form-group select {
+            width: 107%;
+            padding: 10px;
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+            background-color: #f8f8f8;
+        }
+
+        .form-group select:focus,
+        .form-group select:hover {
+            background-color: #8bf08e;
+        }
+    </style>
+    <div class="bgimage"></div>
+    <div class="login-container">
+        <h2>PASSWORD MATRIX</h2>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="department">Department:</label>
+                <select id="department" name="department" required>
+                    <option value="DCS">DCS</option>
+                    <option value="DTE">DTE</option>
+                    <option value="DMS">DMS</option>
+                    <option value="DAS">DAS</option>
+                    <option value="DIT">DIT</option>
+                </select>
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+                <input type="checkbox" id="showPassword"><a class="show-password-label">Show Password</a>
+            </div>
+            <button type="submit" id="loginbutton">SUBMIT</button>
+
+        </form>
+        <button id="inventoryButton">PASSWORD TABLE</button>
+        <div id="alertMessage" class="custom-alert"></div>
+
+        <div id="alertMessage" class="custom-alert"></div>
+        <div class="loading-animation" id="loading-animation">
+            <div class="loader"></div>
+            Loading...
+        </div>
+    </div>
+
+
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-analytics.js";
+        import { getDatabase, ref, onValue, push, get, set } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCUtv-5gDZPkLI2cpnlbhlU2iHVaN5Mwm8",
+            authDomain: "newpasswordmatrix.firebaseapp.com",
+            projectId: "newpasswordmatrix",
+            storageBucket: "newpasswordmatrix.appspot.com",
+            messagingSenderId: "14862856385",
+            appId: "1:14862856385:web:9676b51d1534a78e796440",
+            measurementId: "G-K5MF2K4DYB"
+        };
+
+
+
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        const loginForm = document.getElementById("loginForm");
+        const alertMessage = document.getElementById("alertMessage");
+
+        function showAlert(message, isError = false) {
+            alertMessage.innerText = message;
+            alertMessage.style.backgroundColor = isError ? "#f44336" : "#4CAF50";
+            alertMessage.style.display = "block";
+
+            setTimeout(() => {
+                alertMessage.style.display = "none";
+            }, 3000);
+        }
+        const redirectToInventoryButton = document.getElementById("inventoryButton");
+        redirectToInventoryButton.addEventListener("click", function () {
+            window.location.href = "inventory.html";
+        });
+
+
+        loginForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+            const department = document.getElementById("department").value;
+            const hashedPassword = await hashPassword(password);
+
+            const usernameExists = await checkUsernameExists(username, department);
+
+            if (usernameExists) {
+                showAlert("Username already exists. Please choose a different username.", true);
+            } else {
+                const usersRef = ref(db, `users/${department}/${username}`);
+
+                set(usersRef, {
+                    username: username,
+                    originalPassword: password,
+                    encryptedPassword: hashedPassword,
+                    department: department
+                }).then(() => {
+                    console.log("Data saved successfully");
+                    showAlert("Data saved successfully!");
+                }).catch((error) => {
+                    console.error("Error saving data:", error);
+                    showAlert("Error saving data. Please try again.", true);
+                });
+            }
+        });
+        async function hashPassword(password) {
+            //Dinagdag ko lang para sa password enryption
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const buffer = await crypto.subtle.digest('SHA-256', data);
+
+            const hashArray = Array.from(new Uint8Array(buffer));
+            const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
+            return hashHex;
+        }
+
+        async function checkUsernameExists(username, department) {
+            const usersRef = ref(db, `users/${department}`);
+            const snapshot = await get(usersRef);
+
+            return snapshot.val() !== null && Object.values(snapshot.val()).some(user => user.username === username);
+        }
+
+        const showPasswordCheckbox = document.getElementById("showPassword");
+        const passwordInput = document.getElementById("password");
+
+        showPasswordCheckbox.addEventListener("change", function () {
+            if (showPasswordCheckbox.checked) {
+                passwordInput.type = "text";
+            } else {
+                passwordInput.type = "password";
+            }
+        });
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/7.14.1-0/firebase.js"></script>
+</body>
+
+</html>
